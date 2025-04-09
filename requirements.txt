@@ -4,3 +4,4 @@ openai==1.70.0
 pandas==2.2.3
 uvicorn==0.34.0
 python-dotenv
+jinja2
