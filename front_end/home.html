@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>D3 Force Graph + Chatbot</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: #ffffff;
+      }
+  
+      .graph-container {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #fff;
+        border-bottom: 1px solid #fff;
+        overflow: hidden;
+      }
+  
+      svg {
+          width: 100%;
+          height: auto; /* Let height scale with width */
+          aspect-ratio: 5 / 2; /* Maintain a 5:2 */
+          border: 1px solid #fff;
+          background-color: #ffffff;
+          border-radius: 8px;
+          display: block; /* Remove inline gap if inside a container */
+        }
+  
+      .chat-container {
+        height: 160px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: #ffffff;
+        border-top: 1px solid #ddd;
+        padding: 10px;
+      }
+  
+      .chatbox {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #fff;
+        border-radius: 5px;
+        padding: 5px;
+        margin-bottom: 15px;
+        background-color: #ffffff;
+      }
+  
+      .message {
+        margin-bottom: 10px;
+      }
+  
+      .user-message {
+        color: rgb(244, 136, 5);
+      }
+  
+      .bot-message {
+        color: green;
+      }
+  
+      .input-area {
+        display: flex;
+      }
+  
+      .input-box {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+  
+      .send-button {
+        padding: 10px 20px;
+        margin-left: 10px;
+        background-color: #40414f;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+  
+      .send-button:hover {
+        background-color: #343541;
+      }
+    </style>
+  </head>
+  <body>
+  
+    <div class="graph-container">
+      <svg id="graph"></svg>
+    </div>
+  
+    <div class="chat-container">
+      <div class="chatbox" id="chatbox"></div>
+      <div class="input-area">
+        <input type="text" id="user-input" class="input-box" placeholder="Type your message here...">
+        <button class="send-button" id="send-button">Send</button>
+      </div>
+    </div>
+  
+    <script>
+      // Chatbot Logic
+    async function sendToAPI(userInput) {
+      try {
+        const response = await fetch('http://localhost:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: "user", "content": userInput }
+            ]
+          }),
+        });
+        const data = await response.json();
+        return data.response || 'No response received.';
+      } catch (error) {
+        console.error('Error:', error);
+        return 'Sorry, I couldn\'t understand your request.';
+      }
+    }
+
+    async function showToast(nodeId) {
+    const messages = document.getElementById('chatbox');
+
+    // Add node name as user message
+    const userMsg = document.createElement('div');
+    userMsg.className = 'message user-message';
+    userMsg.textContent = nodeId;
+    messages.appendChild(userMsg);
+    
+    const botResponse = await sendToAPI(nodeId);
+    appendMessage(botResponse, 'bot');
+
+    // Simulate bot response
+    setTimeout(() => {
+      const botMsg = document.createElement('div');
+      botMsg.className = 'message bot-message';
+      // botMsg.textContent = `You clicked node: ${nodeId}`;
+      messages.appendChild(botMsg);
+      messages.scrollTop = messages.scrollHeight;
+    }, 500);
+    
+    messages.scrollTop = messages.scrollHeight;
+    }
+    
+      function appendMessage(content, sender) {
+        const chatbox = document.getElementById('chatbox');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+        messageDiv.textContent = `${sender === 'user' ? 'User' : 'Kifiya Decisioning Agent'}: ${content}`;
+        chatbox.appendChild(messageDiv);
+        chatbox.scrollTop = chatbox.scrollHeight;
+      }
+    
+      document.getElementById('send-button').addEventListener('click', async () => {
+        const userInput = document.getElementById('user-input').value.trim();
+        if (userInput) {
+          appendMessage(userInput, 'user');
+          document.getElementById('user-input').value = '';
+          const botResponse = await sendToAPI(userInput);
+          appendMessage(botResponse, 'Kifiya Decisioning Agent');
+        }
+      });
+
+
+    
+      document.getElementById('user-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          document.getElementById('send-button').click();
+        }
+      });
+    
+      // D3 Force Graph Logic
+      const svg = d3.select("#graph"),
+            width = +svg.attr("width") || 900,
+            height = +svg.attr("height") || 600;
+    
+      const simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(d => d.id).distance(110))
+        .force("charge", d3.forceManyBody().strength(-100))
+        .force("center", d3.forceCenter(width , height / 2))
+        .alphaDecay(0) // Prevent energy decay entirely
+        .alphaTarget(0.0005); // Maintain a small constant energy level for continuous motion
+    
+  const graphData = {
+  nodes: [
+    // Credit Scoring
+    { id: "Credit Scoring", group: 1 },
+    { id: "Micro Formal", group: 2 },
+    { id: "Micro Informal", group: 2 },
+    { id: "Inventory Finance", group: 2 },
+    { id: "Invoice Finance", group: 2 },
+    { id: "AgTech", group: 2 },
+    { id: "Device and Asset Finance", group: 2 },
+    { id: "Buy Now Pay Later", group: 2 },
+
+    // // IDD Platforms
+    { id: "Platforms", group: 3 },
+    { id: "APLIQ", group: 4 },
+    { id: "ASCENT", group: 4 },
+    { id: "COSAP", group: 4 },
+    { id: "Agent Network", group: 4 },
+    { id: "Kifiya Decisioning SaaS", group: 4 },
+    { id: "Kifiya Early Warning System", group: 4 },
+    { id: "Kifiya Loan Portfolio Manager", group: 4 },
+
+
+
+
+    { id: "Financial Platforms", group: 5 },
+    { id: "IFS", group: 6 },
+    { id: "IFS Sharia", group: 6},
+    { id: "Embedded Finance", group: 6 },
+    { id: "Invoice Finance (RF and LPO)", group: 6 },
+    
+    // // Tech Ecosystem
+    { id: "Kifiya Tech Ecosystem", group: 3 },
+
+ 
+  ],
+  links: [
+    // Credit Scoring links
+    { source: "Micro Formal", target: "Credit Scoring" },
+    { source: "Micro Informal", target: "Credit Scoring" },
+    { source: "Inventory Finance", target: "Credit Scoring" },
+    { source: "Invoice Finance", target: "Credit Scoring" },
+    { source: "AgTech", target: "Credit Scoring" },
+    { source: "Device and Asset Finance", target: "Credit Scoring" },
+    { source: "Buy Now Pay Later", target: "Credit Scoring" },
+
+    // //Platforms
+    { source: "APLIQ", target: "Platforms" },
+    { source: "ASCENT", target: "Platforms" },
+    { source: "COSAP", target: "Platforms" },
+    { source: "Agent Network", target: "Platforms" },
+    { source: "Kifiya Decisioning SaaS", target: "Platforms" },
+    { source: "Kifiya Early Warning System", target: "Platforms" },
+    { source: "Kifiya Loan Portfolio Manager", target: "Platforms" },
+
+    { source: "IFS", target: "Financial Platforms" },
+    { source: "IFS Sharia", target: "Financial Platforms" },
+    { source: "Embedded Finance", target: "Financial Platforms" },
+    { source: "Invoice Finance (RF and LPO)", target: "Financial Platforms" },
+
+
+    // Tech Ecosystem
+    { source: "Platforms", target: "Kifiya Tech Ecosystem" },
+    { source: "Credit Scoring", target: "Kifiya Tech Ecosystem" },
+    { source: "Financial Platforms", target: "Kifiya Tech Ecosystem" },
+  ]
+};
+
+      const link = svg.append("g")
+        .attr("stroke", "#aaa")
+        .selectAll("line")
+        .data(graphData.links)
+        .enter().append("line");
+    
+      const node = svg.append("g")
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
+        .selectAll("circle")
+        .data(graphData.nodes)
+        .enter().append("circle")
+        .attr("r", 18)
+        .attr("fill", d => d.group === 1 ? "#1f77b4" : "#ff7f0e")
+        .call(drag(simulation))
+        .on("click", (event, d) => {
+      showToast(d.id); // Pass node ID to showToast
+    });
+    
+      const label = svg.append("g")
+        .selectAll("text")
+        .data(graphData.nodes)
+        .enter().append("text")
+        .attr("dy", ".35em")
+        .attr("x", 12)
+        .text(d => d.id)
+        .style("font-size", "12px");
+    
+      simulation.nodes(graphData.nodes).on("tick", ticked);
+      simulation.force("link").links(graphData.links);
+    
+      let time = 0; // Variable to track time for floating effect
+    
+      function ticked() {
+        time += 0.005; // Increment time for smooth animation
+    
+        link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+    
+        node
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y + Math.sin(time + d.index) * 5); // Add vertical floating effect
+    
+        label
+          .attr("x", d => d.x)
+          .attr("y", d => d.y + Math.sin(time + d.index) * 5); // Sync labels with nodes
+      }
+    
+      function drag(simulation) {
+        function dragstarted(event, d) {
+          if (!event.active) simulation.alphaTarget(0.3).restart(); // Increase energy temporarily for responsiveness
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+    
+        function dragged(event, d) {
+          d.fx = event.x;
+          d.fy = event.y;
+        }
+    
+        function dragended(event, d) {
+          if (!event.active) simulation.alphaTarget(0.005); // Restore constant energy level, don’t stop
+          d.fx = null;
+          d.fy = null;
+        }
+    
+        return d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended);
+      }
+    </script>
+  </body>
+  </html> 
