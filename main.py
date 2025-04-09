@@ -1,7 +1,5 @@
+# main.py
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import logging
@@ -11,14 +9,18 @@ from tools import get_tools
 from utils import call_openai_chat, handle_function_call
 from routers import scoring, kyc
 from fastapi.middleware.cors import CORSMiddleware  # Import CORS middleware
-from fastapi import Request  # Import Request to pass to the template
 
+
+
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from pathlib import Path
+from starlette.requests import Request
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -28,17 +30,16 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Jinja2 template setup for rendering HTML files
-templates = Jinja2Templates(directory=str(Path(__file__).parent / 'front_end'))
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "front_end"))
 
-# Include your routers for scoring and kyc
+
 app.include_router(scoring.router, prefix="/scoring", tags=["Scoring"])
 app.include_router(kyc.router, prefix="/kyc", tags=["KYC"])
 
-# Serve home.html page
-@app.get("/", response_class=HTMLResponse)
-async def read_home(request: Request):  # Ensure request is passed as an argument
-    # Render and serve the home.html page
+
+
+@app.get("/home", response_class=HTMLResponse)
+async def serve_home_page(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
 def log_conversation_history(messages: List[Dict[str, Any]], response: str):
