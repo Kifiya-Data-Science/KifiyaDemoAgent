@@ -95,7 +95,7 @@ async def nano(gender: str, age: int, business_sector: str, region: str) -> dict
     print("function called")
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post("http://localhost:8000/scoring/example", json=payload)
+            response = await client.post("http://3.93.68.14:8000/scoring/example", json=payload)
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
