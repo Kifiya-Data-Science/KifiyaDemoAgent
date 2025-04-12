@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+
+.graph-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border-bottom: 1px solid #fff;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.graph-container svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 5 / 2;
+  border: 1px solid #fff;
+  background-color: #ffffff;
+  border-radius: 8px;
+  display: block;
+}
+
+.chat-container {
+  height: 160px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-top: 1px solid #ddd;
+  padding: 10px;
+}
+
+.chatbox {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #fff;
+  border-radius: 5px;
+  padding: 5px;
+  margin-bottom: 15px;
+  background-color: #ffffff;
+}
+
+.message {
+  margin-bottom: 10px;
+}
+
+.user-message {
+  color: rgb(244, 136, 5);
+}
+
+.bot-message {
+  color: green;
+}
+
+.input-area {
+  display: flex;
+}
+
+.input-box {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.send-button {
+  padding: 10px 20px;
+  margin-left: 10px;
+  background-color: #40414f;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.send-button:hover {
+  background-color: #343541;
+}
+
+.chat-container {
+  height: 200px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-top: 1px solid #ddd;
+  padding: 10px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.sender {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.user-message .sender {
+  color: #ff7f0e;
+}
+
+.bot-message .sender {
+  color: #1f77b4;
+}
+
+.content {
+  display: block;
+}
+
+.content p {
+  margin: 5px 0;
+}
+
+.content ul,
+.content ol {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.content li {
+  margin-bottom: 5px;
+}
+
+.content .heading {
+  margin: 5px 0;
+  font-weight: bold;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+
+.icon-button {
+  padding: 8px;
+}

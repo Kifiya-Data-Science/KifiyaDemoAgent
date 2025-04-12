@@ -5,3 +5,8 @@ pandas==2.2.3
 uvicorn==0.34.0
 python-dotenv
 jinja2
+pydub==0.25.1
+SpeechRecognition==3.14.1
+gTTS==2.5.4
+python-multipart==0.0.20
+ffmpeg==1.4
