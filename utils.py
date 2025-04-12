@@ -8,14 +8,20 @@ from io import BytesIO
 import speech_recognition as sr
 from gtts import gTTS
 import base64
+import os
 
+from groq import Groq
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from functions import add, greet, weather, micro, agtech, nano
 from tools import get_tools
 from config import OPENAI_API_KEY
 
+load_dotenv()
+
 # OpenAI client setup
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Map tool names to functions
 function_map = {
@@ -44,6 +50,44 @@ async def call_openai_chat(
         request_params["tool_choice"] = "auto"
 
     return await openai_client.chat.completions.create(**request_params)
+async def call_groq_chat(
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]] = None,
+    stream: bool = False
+) -> Any:
+    """
+    Calls Groq Chat API with optional tool support and streaming.
+    """
+    request_params = {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "messages": messages,
+    }
+
+    if tools:
+        request_params["tools"] = tools
+        request_params["tool_choice"] = "auto"
+
+    if stream:
+        async def stream_response():
+            try:
+                # Initialize Groq client
+                client = Groq()
+                stream = client.chat.completions.create(**request_params, stream=True)
+                for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        yield json.dumps({"text": chunk.choices[0].delta.content})
+            except Exception as e:
+                yield json.dumps({"error": str(e)})
+        
+        return stream_response()
+    
+    # Non-streaming case
+    loop = asyncio.get_event_loop()
+    completion = await loop.run_in_executor(
+        None,
+        lambda: groq_client.chat.completions.create(**request_params)
+    )
+    return completion
 
 async def handle_function_call(tool_call: Any) -> Any:
     """
