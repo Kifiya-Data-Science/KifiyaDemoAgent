@@ -6,9 +6,10 @@ import logging
 import os
 import json
 from tools import get_tools
-from utils import call_openai_chat, handle_function_call
+from utils import call_openai_chat, handle_function_call, text_to_audio, audio_to_text
 from routers import scoring, kyc
 from fastapi.middleware.cors import CORSMiddleware  # Import CORS middleware
+from fastapi.responses import StreamingResponse
 
 
 
@@ -79,6 +80,73 @@ def load_context():
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]  # [{"role": "user", "content": "..."}]
 
+async def sse_stream(messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]):
+    """
+    Streams LLM response sentence-by-sentence using SSE, with audio for each sentence.
+    """
+    initial_response = await call_openai_chat(messages, tools)
+    
+    if initial_response.choices[0].finish_reason == "tool_calls":
+        tool_calls = initial_response.choices[0].message.tool_calls
+        for tool_call in tool_calls:
+            result = await handle_function_call(tool_call)
+            messages.append(initial_response.choices[0].message.model_dump())
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(result),
+            })
+        stream = await call_openai_chat(messages, stream=True)
+    else:
+        stream = await call_openai_chat(messages, tools, stream=True)
+    
+    buffer = ""
+    accumulated_text = ""
+
+    async for chunk in stream:
+        try:
+            data = json.loads(chunk)
+            if "error" in data:
+                yield f"data: {json.dumps({'error': data['error']})}\n\n"
+                return
+            text_chunk = data["text"]
+            buffer += text_chunk
+
+            # Split buffer on sentence boundaries (., !, ?)
+            while "." in buffer or "!" in buffer or "?" in buffer:
+                # Find the earliest sentence boundary
+                period_idx = buffer.find(".") if "." in buffer else len(buffer)
+                excl_idx = buffer.find("!") if "!" in buffer else len(buffer)
+                ques_idx = buffer.find("?") if "?" in buffer else len(buffer)
+                boundary_idx = min(period_idx, excl_idx, ques_idx)
+
+                if boundary_idx == len(buffer):
+                    break  # No complete sentence yet
+
+                # Extract the sentence (including the punctuation)
+                sentence = buffer[:boundary_idx + 1].strip()
+                if sentence:
+                    accumulated_text += sentence
+                    audio_base64 = text_to_audio(sentence)
+                    yield f"data: {json.dumps({'text': sentence, 'audio': audio_base64})}\n\n"
+                
+                # Remove the processed sentence from the buffer
+                buffer = buffer[boundary_idx + 1:].strip()
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+    
+    # Handle any remaining text in the buffer
+    if buffer.strip():
+        accumulated_text += buffer
+        audio_base64 = text_to_audio(buffer.strip())
+        yield f"data: {json.dumps({'text': buffer.strip(), 'audio': audio_base64})}\n\n"
+
+    # Log conversation after streaming completes
+    log_conversation_history(messages, accumulated_text)
+
+
 @app.post("/chat")
 async def chat_with_agent(req: ChatRequest):
     messages = req.messages
@@ -109,32 +177,4 @@ async def chat_with_agent(req: ChatRequest):
         This is a general Kifiya level tech Infrastructure and platform knowladge base: {load_context()}"""})
     tools = get_tools()
 
-    # Step 1: Call LLM with tools enabled
-    response = await call_openai_chat(messages, tools)
-    # logger.debug(f"LLM Response: {response.choices[0].model_dump()}")
-
-    # Step 2: If LLM wants to call a function/tool
-    if response.choices[0].finish_reason == "tool_calls":
-        tool_calls = response.choices[0].message.tool_calls
-        logger.debug(f"Tool Calls: {tool_calls}")
-        for tool_call in tool_calls:
-            result = await handle_function_call(tool_call)
-
-            messages.append(response.choices[0].message.model_dump())  # tool call message
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": str(result),
-            })
-
-        # Step 3: Follow-up LLM response after tool result
-        final_response = await call_openai_chat(messages)
-        response_text = final_response.choices[0].message.content
-        log_conversation_history(messages, response_text)
-
-        return {"response": response_text}
-
-    # If no tool call, return LLM's original answer
-    response_text = response.choices[0].message.content
-    log_conversation_history(messages, response_text)
-    return {"response": response_text}
+    return StreamingResponse(sse_stream(messages, tools), media_type="text/event-stream")
