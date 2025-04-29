@@ -283,7 +283,7 @@ const Chat: React.FC = () => {
 
       mediaRecorder.start();
       setIsRecording(true);
-      setMessages((prev) => [...prev, { content: 'Recording...', sender: 'bot' }]);
+      /*setMessages((prev) => [...prev, { content: 'Recording...', sender: 'bot' }]);*/
     } catch (error) {
       console.error('Mic access error:', error);
       setMessages((prev) => [...prev, { content: 'Mic access failed.', sender: 'bot' }]);
@@ -313,11 +313,14 @@ const Chat: React.FC = () => {
       <div ref={chatboxRef} className="chat-messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender === 'user' ? 'user-message' : 'bot-message'}`}>
-            <span className="sender">{msg.sender === 'user' ? 'U' : 'K'}:</span>
-            <span className="content">{msg.content}</span>
+            <div className="content">
+              <span className="sender">{msg.sender === 'user' ? 'U' : 'K'}:</span>
+              {msg.content}
+            </div>
           </div>
         ))}
       </div>
+
       <div className="input-container">
         <input
           type="text"
