@@ -96,7 +96,7 @@ async def sse_stream(messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]
                 "tool_call_id": tool_call.id,
                 "content": str(result),
             })
-        stream = await call_groq_chat(messages, stream=True)
+        stream = await call_groq_chat(messages, stream=False)
     else:
         stream = await call_groq_chat(messages, tools, stream=True)
     
